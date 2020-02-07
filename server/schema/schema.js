@@ -1,5 +1,7 @@
 const graphql = require('graphql');
 const _ = require('lodash');
+const Wine = require('../models/Wine');
+const Producer = require('../models/Producer');
 
 const {
   GraphQLObjectType,
@@ -7,43 +9,9 @@ const {
   GraphQLSchema,
   GraphQLID,
   GraphQLInt,
-  GraphQLList
+  GraphQLList,
+  GraphQLError
 } = graphql;
-
-//dummy data
-let wines = [
-  { id: '1', name: 'Pias', type: 'Branco', producerId: '1' },
-  {
-    id: '2',
-    name: 'EA',
-    type: 'Tinto',
-    producerId: '2'
-  },
-  {
-    id: '3',
-    name: 'Ponte de Lima',
-    type: 'Verde',
-    producerId: '3'
-  },
-  {
-    id: '4',
-    name: 'EA',
-    type: 'Branco',
-    producerId: '2'
-  },
-  {
-    id: '5',
-    name: 'Vinea',
-    type: 'Tinto',
-    producerId: '2'
-  }
-];
-
-let producers = [
-  { id: '1', name: 'Adega Pias', region: 'Alentejo', createdYear: 1980 },
-  { id: '2', name: 'Cartuxa', region: 'Alentejo', createdYear: 1975 },
-  { id: '3', name: 'Ponte Lima', region: 'Minho', createdYear: 1950 }
-];
 
 // Wine Type
 const WineType = new GraphQLObjectType({
@@ -58,8 +26,14 @@ const WineType = new GraphQLObjectType({
     },
     producer: {
       type: ProducerType,
-      resolve(parent, args) {
-        return _.find(producers, { id: parent.producerId });
+      async resolve(parent, args) {
+        try {
+          prod = await Producer.findById(parent.producer);
+          return prod;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
       }
     }
   })
@@ -79,8 +53,14 @@ const ProducerType = new GraphQLObjectType({
     createdYear: { type: GraphQLInt },
     wines: {
       type: new GraphQLList(WineType),
-      resolve(parent, args) {
-        return _.filter(wines, { producerId: parent.id });
+      async resolve(parent, args) {
+        try {
+          wines = await Wine.find({ producer: parent.id });
+          return wines;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
       }
     }
   })
@@ -92,34 +72,113 @@ const RootQuery = new GraphQLObjectType({
     wine: {
       type: WineType,
       args: { id: { type: GraphQLID } },
-      resolve(parent, args) {
-        // Code to get data from db / other source
-        return _.find(wines, { id: args.id });
+      async resolve(parent, args) {
+        try {
+          wine = await Wine.findById(args.id);
+          return wine;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
       }
     },
     producer: {
       type: ProducerType,
       args: { id: { type: GraphQLID } },
-      resolve(parent, args) {
-        // Code to get data from db / other source
-        return _.find(producers, { id: args.id });
+      async resolve(parent, args) {
+        try {
+          prod = await Producer.findById(args.id);
+          return prod;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
       }
     },
     wines: {
       type: new GraphQLList(WineType),
-      resolve(parent, args) {
-        return wines;
+      async resolve(parent, args) {
+        try {
+          wines = await Wine.find({});
+          return wines;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
       }
     },
     producers: {
       type: new GraphQLList(ProducerType),
-      resolve(parent, args) {
-        return producers;
+      async resolve(parent, args) {
+        try {
+          prods = await Producer.find({});
+          return prods;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
+      }
+    }
+  }
+});
+
+const Mutation = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: {
+    addProducer: {
+      type: ProducerType,
+      args: {
+        name: { type: GraphQLString },
+        region: { type: GraphQLString },
+        createdYear: { type: GraphQLInt }
+      },
+      async resolve(parent, args) {
+        const { name, region, createdYear } = args;
+        let producer = new Producer({
+          name,
+          region,
+          createdYear
+        });
+        try {
+          const saveProducer = await producer.save();
+          return saveProducer;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
+      }
+    },
+    addWine: {
+      type: WineType,
+      args: {
+        name: { type: GraphQLString },
+        type: {
+          type: GraphQLString
+        },
+        producer: {
+          type: GraphQLID
+        }
+      },
+      async resolve(parent, args) {
+        const { name, type, producer } = args;
+        let wine = new Wine({
+          name,
+          type,
+          producer
+        });
+        try {
+          const saveWine = await wine.save();
+          return saveWine;
+        } catch (err) {
+          const error = new GraphQLError(err);
+          return error;
+        }
       }
     }
   }
 });
 
 module.exports = new GraphQLSchema({
-  query: RootQuery
+  query: RootQuery,
+  mutation: Mutation
 });

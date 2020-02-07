@@ -5,6 +5,7 @@ const mongosse = require('mongoose');
 const dotenv = require('dotenv');
 const colors = require('colors');
 const connectDB = require('./config/db');
+const cors = require('cors');
 
 // Load env vars
 dotenv.config({ path: './config/config.env' });
@@ -14,6 +15,7 @@ connectDB();
 
 const app = express();
 
+app.use(cors());
 app.use('/graphql', graphqlHTTP({ schema, graphiql: true }));
 
 const PORT = process.env.PORT || 4000;

@@ -9,8 +9,13 @@ const WineSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Please add a type']
   },
-  producer: {
+  region: {
     type: String,
+    required: [true, 'Please add a region']
+  },
+  producer: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Producer',
     required: true
   }
 });

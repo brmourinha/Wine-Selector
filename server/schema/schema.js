@@ -24,6 +24,9 @@ const WineType = new GraphQLObjectType({
     type: {
       type: GraphQLString
     },
+    region: {
+      type: GraphQLString
+    },
     producer: {
       type: ProducerType,
       async resolve(parent, args) {
@@ -155,16 +158,18 @@ const Mutation = new GraphQLObjectType({
         type: {
           type: GraphQLString
         },
+        region: { type: GraphQLString },
         producer: {
           type: GraphQLID
         }
       },
       async resolve(parent, args) {
-        const { name, type, producer } = args;
+        const { name, type, producer, region } = args;
         let wine = new Wine({
           name,
           type,
-          producer
+          producer,
+          region
         });
         try {
           const saveWine = await wine.save();
